@@ -1,0 +1,659 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <math.h>
+using namespace std;
+
+char lena[1078];
+char d[1078];
+unsigned char img[512][512]={0};
+char dmm[32][32]={0};
+char shift[512][512]={0};
+//--------------¼È¦s 
+double p[8]={0};
+double mp[8]={0};
+double wp[8]={0};
+float q[512][512]={0};
+float e[512][512]={0};
+char DCT_img[512][512]={0};
+//float DCT_water[512][512]={0};
+//----------------------
+
+float mask_img[512][512]={0};
+float water[512][512]={0};
+float water11[512][512]={0};
+unsigned char mse[512][512]={0};
+
+/* check
+    printf("idctX:\n");
+    for(int w=0;w<16;w++)
+    {
+    	for(int z=0;z<16;z++)
+    	{
+    		printf("%.1f   ",q[w][z]);
+		}
+		printf("\n");
+	}
+	
+	printf("\n"); 
+*/
+
+
+int main()
+{
+    
+	FILE* pfin = fopen("girlface.bmp", "rb");
+//	FILE* dm = fopen("DM.bmp", "rb");
+   
+	fread(&lena,1,1078,pfin);
+//	fread(&d,1,1078,dm);
+		
+	FILE* pf1 = fopen("lena_DCT.bmp", "wb");
+//	FILE* pfm1 = fopen("lena_DCTmask.bmp", "wb");
+	
+	FILE* pf2 = fopen("lena_IDCT.bmp", "wb");
+//	FILE* pfm2 = fopen("lena_IDCTmask.bmp", "wb");
+	
+//	FILE* pfw = fopen("lena_water.bmp", "wb");
+//	FILE* pfdw = fopen("lena_DCTwater.bmp", "wb");
+//	FILE* pfdww = fopen("ddm.bmp", "wb");
+	
+//	int mask[8][8]={ {1,1,1,0,0,0,0,0}, 
+//                     {1,1,0,0,0,0,0,0}, 
+//                     {1,0,0,0,0,0,0,0}, 
+//                     {0,0,0,0,0,0,0,0}, 
+//                     {0,0,0,0,0,0,0,0}, 
+//                     {0,0,0,0,0,0,0,0}, 
+//                     {0,0,0,0,0,0,0,0}, 
+//                     {0,0,0,0,0,0,0,0} };
+
+//	fseek(pfin,1078,SEEK_SET);
+//	fseek(dm,1078,SEEK_SET);
+//	
+	// shift - 128 
+	for(int i=0;i<512;i++)
+	{
+		for(int j=0;j<512;j++)
+		{
+			fread(&img[i][j], 1, 1, pfin);
+			shift[i][j]=img[i][j]-128; 
+		}
+    }
+    
+   // dmmm
+//    for(int i=0;i<32;i++)
+//	{
+//		for(int j=0;j<32;j++)
+//		{
+////			fread(&dmm[i][j], 1, 1, dm);
+//			
+//			/*
+//			if(dmm[i][j]<=128)
+//			{
+//				dmm[i][j]=0;
+//			}
+//			else
+//			{
+//				dmm[i][j]=255;
+//			}
+//			*/
+//		}
+//    }
+    
+//------------------ DCT ----------------------- 
+    int y,y1,cuty;
+    int x,x1,cutx;
+    float cu,cv;
+    int v,w,c=0;
+    double cosy,y2,sum;
+    double cosx,x2;
+//------------------- y ------------------------
+    sum=0;
+	    
+    for(x=0;x<512;x++) 
+    {
+    	for(y=0;y<512;y++)
+    	{
+    		// §PÂ_ C(v) ­È 
+    		if(y==0||y%8==0)
+    		{
+    			cv=1/sqrt(2);
+			}
+			else
+			{
+				cv=1;
+			}
+			// ¤Á³Î 8*8 
+			if(y!=0&&y%8==0)
+			{
+				y1=y;
+				cuty=y;
+			}
+			else
+			{
+				y1=cuty;
+			}
+			if(y<8)
+			{
+				y1=0;
+			}
+			// ²Ö¥[ 
+			for(int k=0;k<8;k++)
+			{
+				v=y%8;
+				y2=sum;
+				cosy=cos((2*k+1)*v*M_PI/16);
+				sum=shift[x][y1]*cosy;
+				sum=sum+y2;
+				y1=y1+1;
+			}
+			sum=0.5*cv*sum;
+			q[x][y]=sum;
+			sum=0;
+			
+		}
+   }
+
+
+//------------------- x ------------------------ 
+    sum=0;
+    
+    for(y=0;y<512;y++)
+    {
+    	for(x=0;x<512;x++)
+    	{
+    		if(x==0||x%8==0)
+    		{
+    			cu=1/sqrt(2);
+			}
+			else
+			{
+				cu=1;
+			}
+			// ¤Á³Î 8*8 
+			if(x!=0&&x%8==0)
+			{
+				x1=x;
+				cutx=x;
+			}
+			else
+			{
+				x1=cutx;
+			}
+			
+			if(x<8)
+			{
+				x1=0;
+			}
+			// ²Ö¥[ 
+			for(int k=0;k<8;k++)
+			{   
+				if((c==0)||(c%8==0))
+				{
+					p[k]=q[x1][y];
+				}
+				w=x%8;
+				x2=sum;
+				cosx=cos((2*k+1)*w*M_PI/16);
+				sum=p[k]*cosx;
+				sum=sum+x2;
+				x1=x1+1;
+			}
+			sum=0.5*cu*sum;
+			q[x][y]=sum;
+			sum=0;
+			c=c+1;
+  	
+	    }
+	}
+
+
+//-------------------WRITE-----------------------
+    fwrite(&lena,1,1078,pf1);
+//    fwrite(&lena,1,1078,pfm1);
+
+    fseek(pf1,1078,SEEK_SET);
+//    fseek(pfm1,1078,SEEK_SET);
+
+	
+
+    // -dct
+	for(int i=0;i<512;i++)
+	{
+		for(int j=0;j<512;j++)
+		{
+			DCT_img[i][j]= (char)q[i][j];
+			fwrite(&DCT_img[i][j], 1, 1, pf1); 
+			
+			e[i][j]=DCT_img[i][j];
+		}
+    }
+    //------------------check
+    printf("idctX:\n");
+    for(int w=0;w<16;w++)
+    {
+    	for(int z=0;z<16;z++)
+    	{
+    		printf("%.1f   ",e[w][z]);
+		}
+		printf("\n");
+	}
+	
+	printf("\n"); 
+//--------------------
+
+    // mask
+//    for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+////			mask_img[i][j]= q[i][j]*mask[i%8][j%8];
+////			fwrite(&mask_img[i][j], 1, 1, pfm1); 
+//		}
+//    } 
+    // -water
+//	for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			water[i][j]= q[i][j]+(dmm[i%32][j%32])*0.1;
+//		}
+//    }
+
+//------------------ IDCT -y -------------------- 
+	sum=0;
+	c=0;
+	double sum_m=0, m=0;
+	double sum_w=0, wa=0;
+	
+    for(x=0;x<512;x++) 
+    {
+    	for(y=0;y<512;y++)
+    	{
+			// ¤Á³Î 8*8 
+			if(y!=0&&y%8==0)
+			{
+				y1=y;
+				cuty=y;
+			}
+			else
+			{
+				y1=cuty;
+			}
+			if(y<8)
+			{
+				y1=0;
+			}
+			// ²Ö¥[ 
+			for(int k=0;k<8;k++)
+			{
+				// §PÂ_ C(v) ­È 
+				if(y1==0||y1%8==0)
+				{
+					cv=1/sqrt(2);
+				}
+				else
+				{
+					cv=1;
+				}
+				if((c==0)||(c%8==0))
+				{
+					p[k]=q[x][y1];
+					mp[k]=(float)mask_img[x][y1];
+					wp[k]=(float)water[x][y1];
+				}
+				v=y%8;
+				cosy=cos((2*v+1)*k*M_PI/16);
+				
+				y2=sum;
+				m=sum_m;
+				wa=sum_w;
+				
+				sum=cv*p[k]*cosy;
+				sum_m=cv*mp[k]*cosy;
+				sum_w=cv*wp[k]*cosy;
+				
+				sum=sum+y2;
+				sum_m=sum_m+m;
+				sum_w=sum_w+wa;
+				
+				y1=y1+1;
+			}
+			q[x][y]=0.5*sum;
+			mask_img[x][y]=0.5*sum_m;
+			water[x][y]=0.5*sum_w;
+			
+			sum=0;
+			sum_m=0;
+			sum_w=0;
+			
+			c=c+1;
+		}
+   }
+
+//------------------ IDCT -x -------------------- 
+    sum=0;
+    sum_m=0;
+    sum_w=0;
+    c=0;
+    
+    for(y=0;y<512;y++)
+    {
+    	for(x=0;x<512;x++)
+    	{
+			// ¤Á³Î 8*8 
+			if(x!=0&&x%8==0)
+			{
+				x1=x;
+				cutx=x;
+			}
+			else
+			{
+				x1=cutx;
+			}
+			
+			if(x<8)
+			{
+				x1=0;
+			}
+			// ²Ö¥[ 
+			for(int k=0;k<8;k++)
+			{   
+			    // §PÂ_ C(u) ­È 
+				if(x1==0||x1%8==0)
+				{
+					cu=1/sqrt(2);
+				}
+				else
+				{
+					cu=1;
+				}
+				if((c==0)||(c%8==0))
+				{
+					p[k]=q[x1][y];
+					mp[k]=mask_img[x1][y];
+					wp[k]=water[x1][y];
+				}
+				
+				w=x%8;
+				cosx=cos((2*w+1)*k*M_PI/16);
+				
+				x2=sum;
+				m=sum_m;
+				wa=sum_w;
+				
+				sum=cu*p[k]*cosx;
+				sum_m=cu*mp[k]*cosx;
+				sum_w=cu*wp[k]*cosx;
+				
+				sum=sum+x2;
+				sum_m=sum_m+m;
+				sum_w=sum_w+wa;
+				
+				x1=x1+1;
+			}
+			q[x][y]=0.5*sum;
+			mask_img[x][y]=0.5*sum_m;
+			water[x][y]=0.5*sum_w;
+			
+			sum=0;
+			sum_m=0;
+			sum_w=0;
+			
+			c=c+1;
+  	
+	    }
+	}
+	
+//-------------------WRITE-----------------------
+
+    fwrite(&lena,1,1078,pf2);
+//    fwrite(&lena,1,1078,pfm2);
+//    fwrite(&lena,1,1078,pfw);
+    fseek(pf2,1078,SEEK_SET);
+//    fseek(pfm2,1078,SEEK_SET);
+//    fseek(pfw,1078,SEEK_SET);
+
+//    unsigned char water11[512][512]={0};
+    // idct
+	for(int i=0;i<512;i++)
+	{
+		for(int j=0;j<512;j++)
+		{
+			DCT_img[i][j]= (char)q[i][j]+128;
+			fwrite(&DCT_img[i][j], 1, 1, pf2); 
+		}
+    }
+    //mask
+//    for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			DCT_img[i][j]= mask_img[i][j]+128;
+////			fwrite(&DCT_img[i][j], 1, 1, pfm2); 
+//		}
+//    }
+    //water
+//    for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			water11[i][j]= water[i][j]+128;
+//			fwrite(&water11[i][j], 1, 1, pfw); 
+//		}
+//    }
+//----------------------MSE & PSNR
+    double MSE=0 , PSNR=0;
+    
+    for(int i=0;i<512;i++)
+	{
+		for(int j=0;j<512;j++)
+		{
+			img[i][j]=img[i][j]-DCT_img[i][j]; 
+			mse[i][j]=img[i][j]*img[i][j];
+			
+			MSE=MSE+mse[i][j];
+		}
+    }
+    MSE=MSE/(512*512);
+    
+    PSNR=10*(log10(255*255/MSE));
+	
+//-----------------
+	printf("\n");
+	
+	printf("mse:\n");
+	printf("%.1f ",MSE);	
+	printf("\n");
+	
+	printf("\n");
+	printf("PSNR:\n");
+	printf("%.1f ",PSNR);	
+	printf("\n");
+	
+	
+//--------------Watermark detection
+//------------------- y ------------------------
+//    sum=0;
+//	    
+//    for(x=0;x<512;x++) 
+//    {
+//    	for(y=0;y<512;y++)
+//    	{
+//    		// §PÂ_ C(v) ­È 
+//    		if(y==0||y%8==0)
+//    		{
+//    			cv=1/sqrt(2);
+//			}
+//			else
+//			{
+//				cv=1;
+//			}
+//			// ¤Á³Î 8*8 
+//			if(y!=0&&y%8==0)
+//			{
+//				y1=y;
+//				cuty=y;
+//			}
+//			else
+//			{
+//				y1=cuty;
+//			}
+//			if(y<8)
+//			{
+//				y1=0;
+//			}
+//			// ²Ö¥[ 
+//			for(int k=0;k<8;k++)
+//			{
+//				v=y%8;
+//				y2=sum;
+//				cosy=cos((2*k+1)*v*M_PI/16);
+//				sum=water11[x][y1]*cosy;
+//				sum=sum+y2;
+//				y1=y1+1;
+//			}
+//			sum=0.5*cv*sum;
+//			q[x][y]=sum;
+//			sum=0;
+//			
+//		}
+//   }
+//
+//
+////------------------- x ------------------------ 
+//    sum=0;
+//    
+//    for(y=0;y<512;y++)
+//    {
+//    	for(x=0;x<512;x++)
+//    	{
+//    		if(x==0||x%8==0)
+//    		{
+//    			cu=1/sqrt(2);
+//			}
+//			else
+//			{
+//				cu=1;
+//			}
+//			// ¤Á³Î 8*8 
+//			if(x!=0&&x%8==0)
+//			{
+//				x1=x;
+//				cutx=x;
+//			}
+//			else
+//			{
+//				x1=cutx;
+//			}
+//			
+//			if(x<8)
+//			{
+//				x1=0;
+//			}
+//			// ²Ö¥[ 
+//			for(int k=0;k<8;k++)
+//			{   
+//				if((c==0)||(c%8==0))
+//				{
+//					p[k]=q[x1][y];
+//				}
+//				w=x%8;
+//				x2=sum;
+//				cosx=cos((2*k+1)*w*M_PI/16);
+//				sum=p[k]*cosx;
+//				sum=sum+x2;
+//				x1=x1+1;
+//			}
+//			sum=0.5*cu*sum;
+//			q[x][y]=sum;
+//			sum=0;
+//			c=c+1;
+//  	
+//	    }
+//	}
+////-------------------WRITE-----------------------
+//    fwrite(&lena,1,1078,pfdw);
+//    fseek(pfdw,1078,SEEK_SET);
+	
+
+    // -dct
+//	for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			DCT_water[i][j]=q[i][j];
+//			fwrite(&DCT_water[i][j], 1, 1, pfdw); 
+//			
+//		}
+//    }
+//------------------------------ check
+//    printf("idctX:\n");
+//    for(int w=0;w<16;w++)
+//    {
+//    	for(int z=0;z<16;z++)
+//    	{
+//    		printf("%.1f   ",DCT_water[w][z]);
+//		}
+//		printf("\n");
+//	}
+//	
+//	printf("\n"); 
+
+//-----------------------------------------
+//	for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			shift[i][j]=DCT_water[i][j]-(char)e[i][j]; // ³Ñ¤UÃ±¦W 
+//			shift[i][j]=shift[i][j]*10;
+//		}
+//    }
+//------------------check
+    printf("idctX:\n");
+    for(int w=0;w<16;w++)
+    {
+    	for(int z=0;z<16;z++)
+    	{
+    		printf("%.1f   ",(float)shift[w][z]);
+		}
+		printf("\n");
+	}
+	
+	printf("\n"); 
+//--------------------
+    
+//    for(int i=0;i<32;i++)
+//	{
+//		for(int j=0;j<32;j++)
+//		{
+//			dmm[i][j]=shift[i][j];
+//		}
+//    }
+////-------------------WRITE-----------------------
+
+//    fwrite(&d,1,1078,pfdww);
+//    fseek(pfdww,1078,SEEK_SET);
+//	
+//
+//    // -dct
+//	for(int i=0;i<512;i++)
+//	{
+//		for(int j=0;j<512;j++)
+//		{
+//			fwrite(&dmm[i][j], 1, 1, pfdww); 
+//			
+//		}
+//    }
+//--------   
+	
+//-----clsoe
+	fclose(pfin);
+//	fclose(dm);
+//	fclose(pfw);
+	fclose(pf1);
+	fclose(pf2);
+//	fclose(pfm1);
+//	fclose(pfm2);
+
+}
